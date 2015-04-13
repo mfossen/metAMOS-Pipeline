@@ -9,7 +9,6 @@ def getConfig(configfile):
     #instantiate a configuration variable and read it in
     config = ConfigParser.SafeConfigParser() 
     config.readfp(configfile)
-
     return config
 
 #get commandline options
@@ -25,8 +24,7 @@ def getOpts():
 
     return parser.parse_args()
 
-def test():
-    print verbose
+
 #start execution from 'main'
 def main():
     global verbose 
@@ -36,12 +34,18 @@ def main():
     if verbose: print('Options used: '+str(opts)+'\n')
     logfile.write('Options used: '+str(opts)+'\n')
 
+    global config
     config = getConfig(opts.configfile ) #read in configuration options
 
+
+    #test()
     logfile.close()
     sys.exit(0)
 
-
+#function to test things with
+def test():
+    print verbose
+    print config.get('metamos','dir')
 
 #define all global variables needed here, then run main()
 configfile = 'pipeline.config'
