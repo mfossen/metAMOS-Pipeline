@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#hard code in the python interpreter in the metamos python virtual environment
 import ConfigParser #renamed to configparser in Python 3
 import argparse
 import sys, os
@@ -23,8 +24,14 @@ def getOpts():
     parser.add_argument('-v','--verbose', action='store_true', help='Turn on verbose output', \
             dest='verbose', default=verbose)
 
-    return parser.parse_args()
+    parser.add_argument('--list-programs', action='store_true', help='List the programs', dest='list_progs', default=False)
 
+
+    if len(sys.argv) < 2:
+        parser.print_help()
+        sys.exit(0)
+
+    return parser.parse_args()
 
 #start execution from 'main'
 def main():
@@ -38,7 +45,12 @@ def main():
     global config
     config = getConfig(opts.configfile ) #read in configuration options
 
+    if opts.list_progs: 
+        for prog in config.sections(): print(prog) 
 
+
+
+    
     #test()
     logfile.close()
     sys.exit(0)
