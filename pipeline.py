@@ -3,6 +3,7 @@ import ConfigParser #renamed to configparser in Python 3
 import argparse
 import sys, os
 from time import strftime
+import subprocess
 
 #get configuration options
 def getConfig(configfile):
@@ -44,13 +45,20 @@ def main():
 
 #function to test things with
 def test():
-    print verbose
-    print config.get('metamos','dir')
+    #print verbose
+    print
+    init = config.get('metamos','init_pipeline')
+    init_opts = config.get('metamos','init_arguments')
+    #print config.get('metamos','run_arguments') 
+    subprocess.Popen([init,init_opts], stdout=logfile)
+    print
+    return
 
 #define all global variables needed here, then run main()
 configfile = 'pipeline.config'
 verbose = False 
 currTime = strftime('%Y-%m-%d_%H:%M:%S')
 logfile = open(str(currTime) +'.log','a')
+errfile = open(str(currTime) +'.err','a')
 
 main()
