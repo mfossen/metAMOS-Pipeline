@@ -5,6 +5,7 @@ import argparse
 import sys, os
 from time import strftime
 import subprocess
+import shlex
 
 #get configuration options
 def getConfig(configfile):
@@ -26,12 +27,29 @@ def getOpts():
 
     parser.add_argument('--list-programs', action='store_true', help='List the programs', dest='list_progs', default=False)
 
+    parser.add_argument('--infile','-i', metavar='FILE',action='store', nargs='?', \
+        help="Specify an input file to read from", dest='infile')
+
+    
+
 
     if len(sys.argv) < 2:
         parser.print_help()
         sys.exit(0)
 
     return parser.parse_args()
+
+def parse_file(infile):
+    with open(infile,'r') as infile:
+        inputs = infile.readlines()
+
+    for line in inputs: print(line)
+    return(0) 
+
+def run_program(prog):
+    bin = config.get(prog,'bin')
+    arguments = config.get(prog,'arguments')
+    proc = subprocess.Popen(shlex.split(bin+ ' ' +arguments), stdout=logfile, stderr=errfile)
 
 #start execution from 'main'
 def main():
@@ -48,10 +66,11 @@ def main():
     if opts.list_progs: 
         for prog in config.sections(): print(prog) 
 
-
-
+    progs = tuple(config.sections() )
+    #run_program('mugsy')
+    #parse_file(opts.infile)
     
-    #test()
+    #test
     logfile.close()
     sys.exit(0)
 
