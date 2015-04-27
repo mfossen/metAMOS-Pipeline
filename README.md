@@ -11,6 +11,7 @@
 |parsnp |1.1    |
 |prokka |1.1    |
 |MUMmer |3.23   |
+|fasttree|2.1.8 |
 
 
 
