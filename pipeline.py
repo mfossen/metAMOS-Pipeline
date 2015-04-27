@@ -28,23 +28,22 @@ def getOpts():
     parser.add_argument('--list-programs', action='store_true', help='List the programs', dest='list_progs', default=False)
 
     parser.add_argument('--infile','-i', metavar='FILE',action='store', nargs='?', \
-        help="Specify an input file to read from", dest='infile')
+            help='Specify an input file to read from', dest='infile')
+
+    parser.add_argument('--outdir','-o', metavar='OUTDIR', action='store', nargs='?' \
+            help='Specify a directory to hold the project files.', dest='outdir')
 
     
-
-
     if len(sys.argv) < 2:
         parser.print_help()
         sys.exit(0)
 
     return parser.parse_args()
 
-def parse_file(infile):
-    with open(infile,'r') as infile:
-        inputs = infile.readlines()
 
-    for line in inputs: print(line)
-    return(0) 
+def run_metamos(prog):
+    if not os.path.isdir(opts.outdir): 
+        proc = subprocess.Popen(shlex.split(config.get(prog,init_pipeline) + ' ' + (config.get(prog,init_arguments)).replace('OUTDIR',opts.outdir) )
 
 def run_program(prog):
     bin = config.get(prog,'bin')
@@ -54,21 +53,23 @@ def run_program(prog):
 #start execution from 'main'
 def main():
     global verbose 
+    global opts
+    global config
+
     opts = getOpts() #get commandline options
     verbose = opts.verbose
 
     if verbose: print('Options used: '+str(opts)+'\n')
     logfile.write('Options used: '+str(opts)+'\n')
 
-    global config
     config = getConfig(opts.configfile ) #read in configuration options
 
     if opts.list_progs: 
         for prog in config.sections(): print(prog) 
 
     progs = tuple(config.sections() )
-    #run_program('mugsy')
-    #parse_file(opts.infile)
+    with open(opts.infile,'r') as infile:
+        inputs = infile.readlines()
     
     #test
     logfile.close()

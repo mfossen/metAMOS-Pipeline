@@ -10,6 +10,7 @@
 |mugsy  |1r2    |
 |parsnp |1.1    |
 |prokka |1.1    |
+|MUMmer |3.23   |
 
 
 
