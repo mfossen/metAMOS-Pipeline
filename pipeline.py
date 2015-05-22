@@ -6,6 +6,7 @@ import sys, os
 from time import strftime
 import subprocess
 import shlex
+import glob
 
 #get configuration options
 def get_config(configfile):
@@ -32,9 +33,9 @@ def get_opts():
 
     parser.add_argument('--outdir','-o', metavar='OUTDIR', action='store', nargs='?',
             help='Specify a directory to hold the project files.', dest='outdir',
-            default='')
+            default='outdir')
 
-    
+     
     if len(sys.argv) < 2:
         parser.print_help()
         sys.exit(0)
@@ -43,7 +44,23 @@ def get_opts():
 
 
 def run_metamos(prog):
-    command = shlex.split(config.get(prog,'init_pipeline') + ' ' + config.get(prog,'init_arguments') + ' ' + opts.outdir)
+    input_line = inputs.pop(0).split()
+    pairedness = input_line[4]
+    filename = input_line[0] 
+    try:
+        if pairedness == 'single':
+            input_file = glob.glob(filename+'*')[0]
+        else:
+            input_file_1 = glob.glob(filename + '_1*')[0]
+            input_file_2 = glob.glob(filename + '_2*')[0]
+
+    except:
+        if verbose: print('File {} does not exist. Skipping.'.format(input_file) )
+        logfile.write('File {} does not exist. Skipping.'.format(input_file) )
+        run_metamos('metamos')
+
+    command = shlex.split(config.get(prog,'init_pipeline') + ' ' + config.get(prog,'init_arguments') + ' -d '+opts.outdir +' {}'.format('-1 {}'.format(input_file if pairedness == 'single'
+            else '-1 {} -2 {}'.format(input_file_1,input_file_2) ) ) ) 
 
     proc = subprocess.Popen(command, stdout=logfile, stderr=logfile)
     ret = proc.wait()
@@ -52,10 +69,10 @@ def run_metamos(prog):
                 + ' '.join(command) + '\n')
         logfile.write("metamos didn't complete successfully with the command:" \
                 + ' '.join(command) + '\n')
-        sys.exit(1)
+        return 1 
     
     command = shlex.split(config.get(prog,'run_pipeline') + ' ' + config.get(prog,'run_arguments') \
-            + opts.outdir)
+            + ' -d ' + opts.outdir)
 
     proc = subprocess.Popen(command, stdout=logfile, stderr=logfile)
     ret = proc.wait()
@@ -64,8 +81,7 @@ def run_metamos(prog):
                 + ' '.join(command) + '\n')
         logfile.write("metamos didn't complete successfully with the command: " \
                 + ' '.join(command) + '\n')
-        sys.exit(1)
-   
+        return 1 
     return 0
 
     
@@ -80,6 +96,7 @@ def main():
     global verbose 
     global opts
     global config
+    global inputs
 
     opts = get_opts() #get commandline options
     verbose = opts.verbose
@@ -89,17 +106,23 @@ def main():
 
     config = get_config(opts.configfile ) #read in configuration options
 
-    if opts.list_progs: 
-        for prog in config.sections(): print(prog) 
-
+    #read in config file sections to a tuple
     progs = tuple(config.sections() )
+    if opts.list_progs: 
+        for prog in progs: print(prog) 
 
+
+    #read in the file of fastq names 
     if opts.infile is not None: 
         with open(opts.infile,'r') as infile:
             inputs = infile.readlines()
+            logfile.write("Using input file: {}".format(infile))
+
+    met_ret = run_metamos('metamos')
+    if met_ret != 0:
+       sys.exit(1) 
     
-    run_metamos('metamos')
-    
+
     #test
     logfile.close()
     sys.exit(0)
