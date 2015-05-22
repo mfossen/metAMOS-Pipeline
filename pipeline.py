@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#hard code in the python interpreter in the metamos python virtual environment
+
 import ConfigParser #renamed to configparser in Python 3
 import argparse
 import sys, os
@@ -8,30 +8,31 @@ import subprocess
 import shlex
 
 #get configuration options
-def getConfig(configfile):
+def get_config(configfile):
     #instantiate a configuration variable and read it in
     config = ConfigParser.SafeConfigParser() 
     config.readfp(configfile)
     return config
 
 #get commandline options
-def getOpts():
+def get_opts():
     parser = argparse.ArgumentParser() 
     #add arguments here
-    parser.add_argument('-f','--file', metavar='FILE', action='store', nargs='?', \
-            type=argparse.FileType('r'), help='Optionally specify an input configuration file',\
+    parser.add_argument('-f','--file', metavar='FILE', action='store', nargs='?',
+            type=argparse.FileType('r'), help='Optionally specify an input configuration file',
             dest='configfile',default=configfile)
 
-    parser.add_argument('-v','--verbose', action='store_true', help='Turn on verbose output', \
+    parser.add_argument('-v','--verbose', action='store_true', help='Turn on verbose output',
             dest='verbose', default=verbose)
 
     parser.add_argument('--list-programs', action='store_true', help='List the programs', dest='list_progs', default=False)
 
-    parser.add_argument('--infile','-i', metavar='FILE',action='store', nargs='?', \
-            help='Specify an input file to read from', dest='infile')
+    parser.add_argument('--infile','-i', metavar='FILE',action='store', nargs='?',
+            help='Specify an input file to read from, in the pipeline format', dest='infile', default=None)
 
-    parser.add_argument('--outdir','-o', metavar='OUTDIR', action='store', nargs='?' \
-            help='Specify a directory to hold the project files.', dest='outdir')
+    parser.add_argument('--outdir','-o', metavar='OUTDIR', action='store', nargs='?',
+            help='Specify a directory to hold the project files.', dest='outdir',
+            default='')
 
     
     if len(sys.argv) < 2:
@@ -42,13 +43,37 @@ def getOpts():
 
 
 def run_metamos(prog):
-    if not os.path.isdir(opts.outdir): 
-        proc = subprocess.Popen(shlex.split(config.get(prog,init_pipeline) + ' ' + (config.get(prog,init_arguments)).replace('OUTDIR',opts.outdir) )
+    command = shlex.split(config.get(prog,'init_pipeline') + ' ' + config.get(prog,'init_arguments') + ' ' + opts.outdir)
+
+    proc = subprocess.Popen(command, stdout=logfile, stderr=logfile)
+    ret = proc.wait()
+    if ret != 0:
+        print("metamos didn't complete successfully with the command:" \
+                + ' '.join(command) + '\n')
+        logfile.write("metamos didn't complete successfully with the command:" \
+                + ' '.join(command) + '\n')
+        sys.exit(1)
+    
+    command = shlex.split(config.get(prog,'run_pipeline') + ' ' + config.get(prog,'run_arguments') \
+            + opts.outdir)
+
+    proc = subprocess.Popen(command, stdout=logfile, stderr=logfile)
+    ret = proc.wait()
+    if ret != 0:
+        print("metamos didn't complete successfully with the command: " \
+                + ' '.join(command) + '\n')
+        logfile.write("metamos didn't complete successfully with the command: " \
+                + ' '.join(command) + '\n')
+        sys.exit(1)
+   
+    return 0
+
+    
 
 def run_program(prog):
     bin = config.get(prog,'bin')
     arguments = config.get(prog,'arguments')
-    proc = subprocess.Popen(shlex.split(bin+ ' ' +arguments), stdout=logfile, stderr=errfile)
+    proc = subprocess.Popen(shlex.split(bin+ ' ' +arguments), stdout=logfile, stderr=logfile)
 
 #start execution from 'main'
 def main():
@@ -56,20 +81,24 @@ def main():
     global opts
     global config
 
-    opts = getOpts() #get commandline options
+    opts = get_opts() #get commandline options
     verbose = opts.verbose
 
     if verbose: print('Options used: '+str(opts)+'\n')
     logfile.write('Options used: '+str(opts)+'\n')
 
-    config = getConfig(opts.configfile ) #read in configuration options
+    config = get_config(opts.configfile ) #read in configuration options
 
     if opts.list_progs: 
         for prog in config.sections(): print(prog) 
 
     progs = tuple(config.sections() )
-    with open(opts.infile,'r') as infile:
-        inputs = infile.readlines()
+
+    if opts.infile is not None: 
+        with open(opts.infile,'r') as infile:
+            inputs = infile.readlines()
+    
+    run_metamos('metamos')
     
     #test
     logfile.close()
@@ -91,6 +120,5 @@ configfile = 'pipeline.config'
 verbose = False 
 currTime = strftime('%Y-%m-%d_%H:%M:%S')
 logfile = open(str(currTime) +'.log','a')
-errfile = open(str(currTime) +'.err','a')
 
 main()
