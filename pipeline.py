@@ -19,7 +19,7 @@ def get_config(configfile):
 def get_opts():
     parser = argparse.ArgumentParser() 
     #add arguments here
-    parser.add_argument('-f','--file', metavar='FILE', action='store', nargs='?',
+    parser.add_argument('-c','--config', metavar='FILE', action='store', nargs='?',
             type=argparse.FileType('r'), help='Optionally specify an input configuration file',
             dest='configfile',default=configfile)
 
@@ -35,6 +35,10 @@ def get_opts():
             help='Specify a directory to hold the project files.', dest='outdir',
             default='outdir')
 
+    parser.add_argument('--fastqdir','-f', metavar='FASTQ DIR', action='store', nargs='?',
+            help='Specify the directory holding the fastq (or gzipped fastq) files.', dest='fastqdir',
+            default='')
+
      
     if len(sys.argv) < 2:
         parser.print_help()
@@ -44,26 +48,29 @@ def get_opts():
 
 
 def run_metamos(prog):
+    outdir = os.path.abspath(opts.outdir)
+    fastqdir = os.path.abspath(opts.fastqdir)
     input_line = inputs.pop(0).split()
     pairedness = input_line[4]
     filename = input_line[0] 
     try:
         if pairedness == 'single':
-            input_file = glob.glob(filename+'*')[0]
+            input_file = glob.glob(fastqdir+'/'+filename+'*')[0]
         else:
-            input_file_1 = glob.glob(filename + '_1*')[0]
-            input_file_2 = glob.glob(filename + '_2*')[0]
+            input_file_1 = glob.glob(fastqdir+'/'+filename + '_1*')[0]
+            input_file_2 = glob.glob(fastqdir+'/'+filename + '_2*')[0]
 
     except:
         if verbose: print('File {} does not exist. Skipping.'.format(input_file) )
         logfile.write('File {} does not exist. Skipping.'.format(input_file) )
-        run_metamos('metamos')
+        sys.exit(1)
 
-    command = shlex.split(config.get(prog,'init_pipeline') + ' ' + config.get(prog,'init_arguments') + ' -d '+opts.outdir +' {}'.format('-1 {}'.format(input_file if pairedness == 'single'
-            else '-1 {} -2 {}'.format(input_file_1,input_file_2) ) ) ) 
+    command = shlex.split(config.get(prog,'init_pipeline') + ' ' + config.get(prog,'init_arguments') + ' -d '+outdir +' {}'.format('-1 {}'.format(input_file) if pairedness == 'single'
+            else '-1 {} -2 {}'.format(input_file_1,input_file_2) ) ) 
 
     proc = subprocess.Popen(command, stdout=logfile, stderr=logfile)
     ret = proc.wait()
+    logfile.flush()
     if ret != 0:
         print("metamos didn't complete successfully with the command:" \
                 + ' '.join(command) + '\n')
@@ -72,10 +79,12 @@ def run_metamos(prog):
         return 1 
     
     command = shlex.split(config.get(prog,'run_pipeline') + ' ' + config.get(prog,'run_arguments') \
-            + ' -d ' + opts.outdir)
+            + ' -d ' + outdir)
 
     proc = subprocess.Popen(command, stdout=logfile, stderr=logfile)
+    #proc = subprocess.Popen(command)
     ret = proc.wait()
+    logfile.flush()
     if ret != 0:
         print("metamos didn't complete successfully with the command: " \
                 + ' '.join(command) + '\n')
@@ -110,6 +119,7 @@ def main():
     progs = tuple(config.sections() )
     if opts.list_progs: 
         for prog in progs: print(prog) 
+        sys.exit(0)
 
 
     #read in the file of fastq names 
